@@ -1,0 +1,33 @@
+erDiagram
+    USERS ||--o{ QUOTE_REQUESTS : "submits (nullable - guests allowed)"
+    USERS ||--o{ BOOKINGS : owns
+    USERS ||--o{ ADDRESSES : saves
+    USERS ||--o{ DEVICE_TOKENS : registers
+    USERS ||--o| DRIVER_PROFILES : "is a driver"
+    USERS ||--o{ REVIEWS : writes
+
+    SERVICE_CATEGORIES ||--o{ SERVICES : groups
+    SERVICES ||--o{ QUOTE_REQUESTS : "requested as"
+    SERVICES ||--o{ REVIEWS : "rated (denormalised)"
+    VEHICLE_TYPES ||--o{ QUOTE_REQUEST_VEHICLES : classifies
+    VEHICLE_TYPES ||--o{ BOOKING_VEHICLES : classifies
+
+    QUOTE_REQUESTS ||--|{ QUOTE_REQUEST_VEHICLES : contains
+    QUOTE_REQUESTS ||--o{ QUOTES : "priced by (versioned)"
+    QUOTES ||--o| BOOKINGS : "converts to"
+
+    BOOKINGS ||--|{ BOOKING_VEHICLES : ships
+    BOOKINGS ||--o{ BOOKING_EVENTS : "timeline of"
+    BOOKINGS ||--o{ PAYMENTS : "settled by"
+    BOOKINGS ||--o| REVIEWS : "reviewed by (0..1, UNIQUE)"
+
+    CARRIERS ||--o{ BOOKINGS : fulfils
+    CARRIERS ||--o{ DRIVER_PROFILES : employs
+    CARRIERS ||--o{ TRUCKS : operates
+
+    PAYMENTS ||--o{ PAYMENTS : "refunds (self-ref)"
+    REVIEWS ||--o{ REVIEW_VOTES : "voted helpful"
+
+    PAGES ||--o| SEO_META : "has (polymorphic)"
+    LOCATIONS ||--o| SEO_META : "has (polymorphic)"
+    BOOKINGS ||--o{ MEDIA : "BOL + photos (polymorphic)"
