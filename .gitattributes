@@ -1,0 +1,35 @@
+# Master attributes file, consolidated from backend/.gitattributes.
+#
+# `text=auto eol=lf` normalises line endings to LF in the repository while
+# letting Git check out whatever the platform wants. This matters more than it
+# looks on a Windows checkout: a shell script or a Composer binary committed
+# with CRLF fails at runtime with "bad interpreter", and a file that flips line
+# endings shows up as 100% changed in every diff, burying the real edit.
+* text=auto eol=lf
+
+# Keep genuinely binary formats out of the text pipeline entirely.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.sqlite binary
+*.hbc binary
+
+# Language-aware diff hunk headers: Git prints the enclosing function or rule
+# instead of a bare line number, which is the difference between a reviewable
+# diff and a wall of context.
+*.php   diff=php
+*.blade.php diff=html
+*.css   diff=css
+*.html  diff=html
+*.md    diff=markdown
+
+# Excluded from `git archive` exports — tooling config, not product.
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
