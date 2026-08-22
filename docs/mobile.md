@@ -11,9 +11,7 @@ once delivered, and contact the company.
 > redirect pattern for auth guards. Guidance written for SDK 50 is actively
 > wrong. <https://docs.expo.dev/versions/v57.0.0/>
 
-**Related:** [`architecture.md`](architecture.md) · [`backend.md`](backend.md) · [`product-spec.md`](product-spec.md) ·
-[`../mobile/README.md`](../mobile/README.md) (setup and day-to-day work inside the
-project; self-contained because `mobile/` is its own repository)
+**Related:** [`architecture.md`](architecture.md) · [`backend.md`](backend.md)
 
 ---
 

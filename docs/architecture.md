@@ -1,8 +1,7 @@
 # AutoTransport — System Architecture
 
 **Companion documents:** [`database-design.md`](database-design.md) (schema and its rationale) ·
-[`backend.md`](backend.md) (Laravel API + admin panel) · [`mobile.md`](mobile.md) (React Native client) ·
-[`product-spec.md`](product-spec.md) (wireframes, feature list, traceability)
+[`backend.md`](backend.md) (Laravel API + admin panel) · [`mobile.md`](mobile.md) (React Native client)
 
 This document covers what the pieces are, how a request moves through them, and
 the handful of invariants that hold the system together. Where it says "why",
@@ -306,24 +305,8 @@ then dies on the first page render with *failed to open stream* — a failure th
 appears only on a fresh checkout, never on the machine that caused it. Nine of
 them remain, on purpose.
 
-**Agent configuration is ignored, `AGENTS.md` is not.** `.claude/`, `CLAUDE.md`,
-`CLAUDE.local.md` and `.mcp.json` are ignored at any depth:
-`settings.local.json` accumulates a permission allowlist full of absolute paths
-from the machine that produced it, and `.mcp.json` can carry server tokens.
-`CLAUDE.md` here is a one-line `@AGENTS.md` pointer, so ignoring it costs
-nothing — the instructions live in `AGENTS.md`, which stays committed and is the
-vendor-neutral filename other agent tools read too. There is an explicit
-`!AGENTS.md` so a future broader glob cannot swallow it.
-
 **`mobile/` is still a separate git repository** with its own remote, so it keeps
-its own `.gitignore`; a root-level file has no authority over a nested repo. The
-agent rules above are therefore duplicated into `mobile/.gitignore` deliberately.
+its own `.gitignore`; a root-level file has no authority over a nested repo.
 Consolidating fully means removing `mobile/.git`, which unlinks it from its
 remote and discards its history — a decision for whoever owns that repo, not a
 side effect of a documentation pass.
-
-**A `.gitignore` rule does not untrack an already-tracked file.** `CLAUDE.md` and
-`.claude/settings.json` were both tracked in the mobile repo, so the rules alone
-would have been inert; they needed `git rm --cached` (which stages the removal and
-leaves the working file alone). Check with `git check-ignore -v <path>` rather
-than assuming — it reports the exact rule that matched.
