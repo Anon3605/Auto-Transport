@@ -19,6 +19,13 @@ Read these in order of the question you have:
 | [`docs/database-design.md`](docs/database-design.md) | Why the schema is shaped this way — **read first for any data question** |
 | [`docs/backend.md`](docs/backend.md) | Laravel layering, the API surface, the admin panel, permissions, testing |
 | [`docs/mobile.md`](docs/mobile.md) | Routing, the auth guard, state layers, the API seam, design system |
+| [`docs/product-spec.md`](docs/product-spec.md) | Wireframes, feature list with build status, and a feature→table traceability matrix |
+
+Each project also has a README for working inside it:
+[`backend/README.md`](backend/README.md) ·
+[`mobile/README.md`](mobile/README.md). The mobile one is deliberately
+self-contained, because that directory is its own git repository — someone who
+clones it standalone never sees `docs/`.
 
 The docs carry the *why*. The *what* is recoverable from the code; the reasoning
 is not.
@@ -174,5 +181,12 @@ since Git tracks files and not folders. They are the only reason
 then dies on the first page render with *failed to open stream* — a failure that
 appears only on a fresh checkout.
 
+Agent configuration is ignored — `.claude/`, `CLAUDE.md`, `CLAUDE.local.md` and
+`.mcp.json` at any depth. **`AGENTS.md` is deliberately kept**, with an explicit
+`!AGENTS.md` so a broader glob cannot swallow it later: `CLAUDE.md` is only a
+one-line `@AGENTS.md` pointer, so the real instructions stay in version control
+under the filename other agent tools also read.
+
 `mobile/` is currently its own git repository with its own remote, so it keeps its
-own `.gitignore`; a root-level file has no authority over a nested repo.
+own `.gitignore`; a root-level file has no authority over a nested repo, which is
+why the agent rules appear in both files.

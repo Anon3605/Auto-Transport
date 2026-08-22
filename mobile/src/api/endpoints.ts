@@ -43,4 +43,15 @@ export const endpoints = {
   },
   contact:      '/contact-messages',
   deviceTokens: '/device-tokens',
+
+  /*
+   * The driver surface. Separate from `bookings` because it is a different
+   * question: /bookings asks "what did I buy", /driver/jobs asks "what am I
+   * carrying". The server scopes them on different columns.
+   */
+  driver: {
+    jobs:   '/driver/jobs',
+    job:    (ulid: string) => `/driver/jobs/${ulid}`,
+    status: (ulid: string) => `/driver/jobs/${ulid}/status`,
+  },
 } as const;

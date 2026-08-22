@@ -162,6 +162,10 @@
             </div>
         </section>
 
+        @if ($user->hasRole('driver'))
+            @include('admin.partials.driver-profile-fields', ['user' => $user, 'carriers' => $carriers])
+        @endif
+
         <section class="card">
             <div class="card__head">
                 <h2 class="card__title">Roles</h2>

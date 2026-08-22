@@ -58,7 +58,7 @@ Only variables prefixed `EXPO_PUBLIC_` are exposed to client code, and they are
 ## Route tree
 
 Every file under `app/` is a route; `expo-router` is file-system based, so the
-tree _is_ the navigation graph. Parenthesised segments are groups — they organise
+tree *is* the navigation graph. Parenthesised segments are groups — they organise
 files without adding a URL segment, so `(tabs)/index.tsx` is `/`, not `/tabs`.
 
 ```
@@ -101,7 +101,7 @@ Two consequences:
   re-renders and the tab group becomes reachable on its own. A `router.push`
   after login is redundant and fights the guard.
 - **The splash screen stays up until the stored token has been checked.** Hiding
-  it earlier shows the login screen for a frame to someone who _is_ signed in —
+  it earlier shows the login screen for a frame to someone who *is* signed in —
   brief, but it reads as being logged out, which is alarming in an app holding
   shipment records.
 
@@ -133,11 +133,11 @@ the router's file map, and the helper disappears the day that screen is renamed.
 
 ### State: three layers, three owners
 
-| Layer        | Owner          | Holds                       |
-| ------------ | -------------- | --------------------------- |
+| Layer | Owner | Holds |
+|---|---|---|
 | Server state | TanStack Query | services, bookings, reviews |
-| Session      | React Context  | the signed-in user          |
-| Form state   | `useState`     | local to one screen         |
+| Session | React Context | the signed-in user |
+| Form state | `useState` | local to one screen |
 
 The session is Context rather than a module-level store because the
 `Stack.Protected` guard has to re-render when auth changes — a value read outside
@@ -168,7 +168,7 @@ the API this client consumes.
 **`expo-router` builds its route manifest when the dev server starts.** A new file
 under `app/` added to a running server is **not registered** — the browser keeps
 serving a bundle with no knowledge of it and the screen is unreachable. Hot reload
-updates _edited_ files, which makes this especially confusing: your edits appear,
+updates *edited* files, which makes this especially confusing: your edits appear,
 your new screen does not.
 
 Restart with `npx expo start --clear`, then verify against the **served bundle**
@@ -183,7 +183,7 @@ reject a valid `href` right after you add a screen.
 
 ### 2. `expo-secure-store` has no web build
 
-The SDK 57 docs are explicit: _"Web is not supported."_ An unguarded call throws
+The SDK 57 docs are explicit: *"Web is not supported."* An unguarded call throws
 rather than degrading, and `app.json` configures a web bundler — so the web target
 is real here.
 
@@ -244,15 +244,15 @@ conveys nothing.
 `package.json` carries packages nothing imports — from the Expo template and from
 planned scope:
 
-| Package                                  | Intended for                                               |
-| ---------------------------------------- | ---------------------------------------------------------- |
-| `zustand`                                | superseded — session state is React Context                |
-| `react-hook-form`, `@hookform/resolvers` | forms are `useState`; they are small                       |
-| `react-native-maps`                      | tracking map on the booking screen                         |
-| `expo-location`                          | driver location pings                                      |
-| `expo-notifications`                     | push on status change (`device_tokens` exists server-side) |
-| `date-fns`                               | dates are ISO strings formatted by slicing                 |
-| `expo-symbols`                           | superseded — tab icons are glyphs, no native dependency    |
+| Package | Intended for |
+|---|---|
+| `zustand` | superseded — session state is React Context |
+| `react-hook-form`, `@hookform/resolvers` | forms are `useState`; they are small |
+| `react-native-maps` | tracking map on the booking screen |
+| `expo-location` | driver location pings |
+| `expo-notifications` | push on status change (`device_tokens` exists server-side) |
+| `date-fns` | dates are ISO strings formatted by slicing |
+| `expo-symbols` | superseded — tab icons are glyphs, no native dependency |
 
 Listed rather than removed because several are next on the roadmap. **They are not
 free** — each is resolved at install and some add native weight to a build. Prune

@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\Carrier;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -95,12 +96,24 @@ class UserController extends Controller
 
     public function edit(User $user): View
     {
-        $user->load('roles');
+        $user->load(['roles', 'driverProfile']);
 
         return view('admin.users.edit', [
             'user' => $user,
             'roles' => $this->assignableRoles(),
             'statuses' => StoreUserRequest::STATUSES,
+
+            /*
+             * Carriers are only needed for a driver, but loading them
+             * unconditionally keeps the controller free of a role check that the
+             * view already has to make anyway. One small query.
+             *
+             * Without this the approval loop is broken: a self-registered driver
+             * has carrier_id = null, and AssignBookingRequest refuses to assign a
+             * driver who does not work for the chosen carrier — so a driver with
+             * no employer can never be given work, no matter what their status is.
+             */
+            'carriers' => Carrier::query()->orderBy('company_name')->get(['id', 'company_name']),
         ]);
     }
 
@@ -126,6 +139,8 @@ class UserController extends Controller
 
             $user->update($attributes);
             $user->syncRoles($roles);
+
+            $this->syncDriverProfile($user, $roles, $request->validated('driver', []));
         });
 
         activity()
@@ -222,6 +237,55 @@ class UserController extends Controller
         return $roles->reject(fn (Role $role): bool => $role->name === UserRole::SuperAdmin->value)->values();
     }
 
+
+    /**
+     * Keep driver_profiles in step with the roles the account holds.
+     *
+     * Three cases, and the third is the one that matters:
+     *
+     *  - driver role, no profile  -> create one. A driver promoted by staff in the
+     *    panel needs the row that self-registration would have made.
+     *  - driver role, has profile -> update the licence and employer.
+     *  - NOT a driver, has profile -> leave the row alone. Deleting it would throw
+     *    away licence history and, because driver_profiles.user_id is UNIQUE,
+     *    re-promoting the person later would silently lose what was recorded
+     *    before. Roles come and go; the record of who they were does not.
+     *
+     * @param  list<string>  $roles
+     * @param  array<string, mixed>  $driver
+     */
+    private function syncDriverProfile(User $user, array $roles, array $driver): void
+    {
+        if (! in_array(UserRole::Driver->value, $roles, true)) {
+            return;
+        }
+
+        $profile = $user->driverProfile()->firstOrNew([]);
+
+        $profile->fill(array_filter([
+            'license_number' => $driver['license_number'] ?? null,
+            'license_state' => $driver['license_state'] ?? null,
+            'license_expires_at' => $driver['license_expires_at'] ?? null,
+            'cdl_class' => $driver['cdl_class'] ?? null,
+        ], static fn ($value): bool => $value !== null && $value !== ''));
+
+        /*
+         * carrier_id is set explicitly rather than through array_filter, because
+         * an empty value here means "un-assign this driver from their carrier" —
+         * a real action that array_filter would silently discard.
+         */
+        if (array_key_exists('carrier_id', $driver)) {
+            $profile->carrier_id = ($driver['carrier_id'] === null || $driver['carrier_id'] === '')
+                ? null
+                : (int) $driver['carrier_id'];
+        }
+
+        if (array_key_exists('is_available', $driver)) {
+            $profile->is_available = (bool) $driver['is_available'];
+        }
+
+        $user->driverProfile()->save($profile);
+    }
     /**
      * True when applying $roles to $user would leave the system with no
      * super-admin. Deletion passes an empty role set, which is the same question.

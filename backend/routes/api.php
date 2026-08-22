@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\ContactMessageController;
 use App\Http\Controllers\Api\V1\DeviceTokenController;
+use App\Http\Controllers\Api\V1\DriverJobController;
 use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ServiceController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\VehicleTypeController;
+use Spatie\Permission\Middleware\RoleMiddleware;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -142,5 +144,20 @@ Route::prefix('v1')->group(function (): void {
         Route::post('reviews/{review}/helpful', [ReviewController::class, 'helpful']);
 
         Route::post('device-tokens', [DeviceTokenController::class, 'store']);
+
+        /*
+         * ------------------------------------------------------------- driver
+         * A driver is not a customer. The customer endpoints above scope on
+         * `user_id`; these scope on `driver_id`, which is the whole reason they
+         * exist as a separate group rather than a filter on /bookings.
+         *
+         * Gated by the `driver` role: a customer holding a valid token must not be
+         * able to enumerate loads by calling a driver endpoint.
+         */
+        Route::middleware(RoleMiddleware::using('driver'))->prefix('driver')->group(function (): void {
+            Route::get('jobs', [DriverJobController::class, 'index']);
+            Route::get('jobs/{booking}', [DriverJobController::class, 'show']);
+            Route::post('jobs/{booking}/status', [DriverJobController::class, 'updateStatus']);
+        });
     });
 });

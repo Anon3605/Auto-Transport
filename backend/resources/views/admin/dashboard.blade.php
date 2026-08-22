@@ -71,6 +71,101 @@
             </div>
         @endif
 
+        @can('view_bookings')
+            {{--
+                The approval queue. Placed above everything else because it is the
+                only block on this page with a customer waiting at the other end of
+                it — a new order sits at pending_payment until a human confirms it,
+                and until this existed nothing on the dashboard said so.
+            --}}
+            <section class="card card--flush">
+                <div class="card__head">
+                    <h2 class="card__title">
+                        Awaiting confirmation
+                        @if (count($awaitingConfirmation) > 0)
+                            <span class="badge badge--warning">{{ count($awaitingConfirmation) }}</span>
+                        @endif
+                    </h2>
+                    <div class="card__actions">
+                        <a class="btn btn--ghost btn--sm"
+                           href="{{ route('admin.bookings.index', ['status' => 'pending_payment']) }}">View all</a>
+                    </div>
+                </div>
+
+                @if (count($awaitingConfirmation) === 0)
+                    @include('admin.partials.empty-state', [
+                        'icon' => '✓',
+                        'title' => 'Nothing waiting',
+                        'text' => 'Every order placed has been confirmed or cancelled.',
+                    ])
+                @else
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Order</th>
+                                    <th scope="col">Customer</th>
+                                    <th scope="col">Lane</th>
+                                    <th scope="col">Placed</th>
+                                    <th scope="col" class="num">Total</th>
+                                    <th scope="col"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($awaitingConfirmation as $order)
+                                    <tr>
+                                        <td>
+                                            <a class="mono table__primary"
+                                               href="{{ route('admin.bookings.show', $order) }}">{{ $order->booking_number }}</a>
+                                            <span class="table__sub">{{ $order->service?->name ?? 'No service' }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="table__primary">{{ $order->user?->name ?? 'Deleted user' }}</span>
+                                            <span class="table__sub truncate">{{ $order->user?->email }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="lane">
+                                                <span class="lane__point">{{ $order->pickup_city }}</span>
+                                                <span class="lane__arrow" aria-hidden="true">&rarr;</span>
+                                                <span class="lane__point">{{ $order->dropoff_city }}</span>
+                                            </span>
+                                        </td>
+                                        <td class="nowrap" title="{{ $order->created_at }}">
+                                            {{ $order->created_at?->diffForHumans() }}
+                                        </td>
+                                        <td class="num money">
+                                            {{ number_format($order->total_price['cents'] / 100, 2) }}
+                                        </td>
+                                        <td class="nowrap">
+                                            @can('manage_bookings')
+                                                {{-- Posts to the same status endpoint the detail page uses,
+                                                     so the state machine and the timeline event are shared
+                                                     rather than reimplemented for a shortcut. --}}
+                                                <form method="POST"
+                                                      action="{{ route('admin.bookings.status', $order) }}"
+                                                      class="inline-form">
+                                                    @csrf
+                                                    <input type="hidden" name="status" value="confirmed">
+                                                    <input type="hidden" name="description"
+                                                           value="Confirmed from the dashboard queue.">
+                                                    <button type="submit" class="btn btn--outline-success btn--sm">
+                                                        Confirm
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <a class="btn btn--secondary btn--sm"
+                                                   href="{{ route('admin.bookings.show', $order) }}">Open</a>
+                                            @endcan
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </section>
+        @endcan
+
         <div class="split">
             <section class="card card--flush">
                 <div class="card__head">

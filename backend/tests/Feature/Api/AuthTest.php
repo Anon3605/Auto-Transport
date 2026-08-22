@@ -53,7 +53,7 @@ class AuthTest extends TestCase
         $response->assertCreated()
             ->assertJsonStructure([
                 'token',
-                'user' => ['ulid', 'name', 'email', 'phone', 'avatar_url', 'roles', 'email_verified'],
+                'user' => ['ulid', 'name', 'email', 'phone', 'avatar_url', 'status', 'is_active', 'roles', 'email_verified'],
             ])
             ->assertJsonPath('user.email', 'dana@example.com')
             ->assertJsonPath('user.roles', [UserRole::Customer->value])
@@ -232,6 +232,8 @@ class AuthTest extends TestCase
                     'email' => $user->email,
                     'phone' => $user->phone,
                     'avatar_url' => null,
+                    'status' => 'active',
+                    'is_active' => true,
                     'roles' => [UserRole::Customer->value],
                     'email_verified' => true,
                 ],

@@ -254,6 +254,10 @@
                 </div>
             </section>
 
+            @can('manage_bookings')
+                @include('admin.partials.payment-form', ['booking' => $booking])
+            @endcan
+
             <section class="card">
                 <div class="card__head"><h2 class="card__title">Assignment</h2></div>
                 <div class="card__body">
@@ -279,6 +283,91 @@
                     </dl>
                 </div>
             </section>
+
+            @can('manage_bookings')
+                <section class="card">
+                    <div class="card__head"><h2 class="card__title">Assignment</h2></div>
+                    <div class="card__body">
+                        {{--
+                            Separate form from the status one: assigning a carrier is
+                            not a state transition. A booking can gain a driver while
+                            staying confirmed, so tying the two together would mean
+                            moving the status as a side effect of assignment.
+
+                            No JavaScript filters the driver and truck lists by the
+                            chosen carrier — the request validates the relationship
+                            server-side instead, so a mismatch is a readable 422
+                            rather than a silently impossible assignment.
+                        --}}
+                        <form method="POST" action="{{ route('admin.bookings.assign', $booking) }}" class="stack-sm">
+                            @csrf
+
+                            <div class="form-field">
+                                <label class="form-label" for="carrier_id">Carrier</label>
+                                <select class="select" name="carrier_id" id="carrier_id">
+                                    <option value="">Unassigned</option>
+                                    @foreach ($carriers as $carrier)
+                                        <option value="{{ $carrier->id }}"
+                                            @selected((int) old('carrier_id', $booking->carrier_id) === $carrier->id)>
+                                            {{ $carrier->company_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('carrier_id')<p class="form-error">{{ $message }}</p>@enderror
+                            </div>
+
+                            <div class="form-field">
+                                <label class="form-label" for="driver_id">Driver</label>
+                                <select class="select" name="driver_id" id="driver_id">
+                                    <option value="">Unassigned</option>
+                                    @foreach ($carriers as $carrier)
+                                        @if ($carrier->driverProfiles->isNotEmpty())
+                                            <optgroup label="{{ $carrier->company_name }}">
+                                                @foreach ($carrier->driverProfiles as $profile)
+                                                    @if ($profile->user)
+                                                        <option value="{{ $profile->user->id }}"
+                                                            @selected((int) old('driver_id', $booking->driver_id) === $profile->user->id)>
+                                                            {{ $profile->user->name }}
+                                                        </option>
+                                                    @endif
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                    @endforeach
+                                </select>
+                                @error('driver_id')<p class="form-error">{{ $message }}</p>@enderror
+                                <p class="form-hint">Grouped by employer — a driver must work for the chosen carrier.</p>
+                            </div>
+
+                            <div class="form-field">
+                                <label class="form-label" for="truck_id">Truck</label>
+                                <select class="select" name="truck_id" id="truck_id">
+                                    <option value="">Unassigned</option>
+                                    @foreach ($carriers as $carrier)
+                                        @if ($carrier->trucks->isNotEmpty())
+                                            <optgroup label="{{ $carrier->company_name }}">
+                                                @foreach ($carrier->trucks as $truck)
+                                                    <option value="{{ $truck->id }}"
+                                                        @selected((int) old('truck_id', $booking->truck_id) === $truck->id)>
+                                                        {{ $truck->unit_number }}
+                                                        @if ($truck->trailer_type) — {{ $truck->trailer_type }} @endif
+                                                        @unless ($truck->is_active) (inactive) @endunless
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                    @endforeach
+                                </select>
+                                @error('truck_id')<p class="form-error">{{ $message }}</p>@enderror
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn--primary btn--block">Save assignment</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            @endcan
 
             <section class="card">
                 <div class="card__head"><h2 class="card__title">Review</h2></div>

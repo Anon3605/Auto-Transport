@@ -3,37 +3,49 @@
 namespace App\Actions;
 
 use App\Enums\UserRole;
+use App\Models\DriverProfile;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 /**
- * Self-service registration from the mobile client. Lives outside the
- * controller because the admin panel and the seeders create customers too, and
- * an account that exists without its role is an account that can do nothing.
+ * Creates a self-registered account.
+ *
+ * Two account types, and they are NOT equivalent:
+ *
+ *   customer — active immediately. Nothing they can do carries risk to anyone
+ *              else; the worst case is an abandoned account.
+ *
+ *   driver   — created PENDING. Anyone can type "driver" into a form, and a
+ *              driver is somebody a customer hands a vehicle to. The licence
+ *              details they supply are claims, not verified facts, so the
+ *              account exists but is inert until a human checks the licence and
+ *              links them to a carrier.
+ *
+ * The pending state is enforced in two independent places, which is deliberate:
+ *
+ *   1. `users.status = 'pending'` — BookingPolicy::create() requires 'active',
+ *      so a pending account cannot transact.
+ *   2. `driver_profiles.carrier_id = null` — AssignBookingRequest refuses to
+ *      assign a driver who does not work for the chosen carrier, so an unvetted
+ *      driver is unassignable *by construction* rather than by a status check
+ *      somebody might forget.
+ *
+ * Either alone would be a single point of failure. Together, forgetting one
+ * still leaves the other holding.
  */
 class RegisterUser
 {
     /**
-     * Guest quote requests are deliberately NOT claimed here.
-     *
-     * docs/database-design.md §4.10: claiming on registration lets anyone type a
-     * stranger's address and inherit their quote history -- addresses and VINs
-     * included. The claim belongs on Illuminate\Auth\Events\Verified, which only
-     * fires once the human has proved they read mail at that address:
-     *
-     *     // app/Listeners/ClaimGuestQuoteRequests.php (not owned by this file)
-     *     public function handle(Verified $event): void
-     *     {
-     *         QuoteRequest::claimGuestRequestsFor($event->user);
-     *     }
-     *
-     * @param  array{name: string, email: string, password: string, phone?: string|null}  $attributes
+     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>|null  $driverProfile  licence claims, when registering a driver
      */
-    public function __invoke(array $attributes): User
+    public function __invoke(array $attributes, ?array $driverProfile = null): User
     {
-        $user = DB::transaction(function () use ($attributes): User {
+        $isDriver = $driverProfile !== null;
+
+        $user = DB::transaction(function () use ($attributes, $driverProfile, $isDriver): User {
             $user = User::create([
                 'name' => $attributes['name'],
                 'email' => $attributes['email'],
@@ -41,13 +53,36 @@ class RegisterUser
                 'password' => $attributes['password'],
                 // The model's set mutator writes phone_normalized alongside this.
                 'phone' => $attributes['phone'] ?? null,
-                'status' => 'active',
+
+                // A driver waits for a human. A customer does not.
+                'status' => $isDriver ? 'pending' : 'active',
             ]);
 
             // findOrCreate, not findByName: registration must not 500 because a
             // seeder has not run yet on a fresh environment. The row is a bare
             // name -- the seeder attaches permissions to it by name later.
-            $user->assignRole(Role::findOrCreate(UserRole::Customer->value, 'web'));
+            $role = $isDriver ? UserRole::Driver : UserRole::Customer;
+            $user->assignRole(Role::findOrCreate($role->value, 'web'));
+
+            if ($isDriver) {
+                DriverProfile::create([
+                    'user_id' => $user->id,
+
+                    // No employer yet. This is the load-bearing half of the
+                    // vetting gate -- see the class docblock.
+                    'carrier_id' => null,
+
+                    'license_number' => $driverProfile['license_number'] ?? null,
+                    'license_state' => $driverProfile['license_state'] ?? null,
+                    'license_expires_at' => $driverProfile['license_expires_at'] ?? null,
+                    'cdl_class' => $driverProfile['cdl_class'] ?? null,
+
+                    // Not available for dispatch until approved. The column
+                    // defaults to true, which is right for an existing employee
+                    // and wrong for an applicant.
+                    'is_available' => false,
+                ]);
+            }
 
             return $user;
         });

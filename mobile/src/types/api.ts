@@ -31,6 +31,13 @@ export interface User {
   email: string;
   phone: string | null;
   avatar_url: string | null;
+  /**
+   * 'active' | 'pending' | 'suspended'. A self-registered driver arrives
+   * 'pending' — the app must be able to tell that apart from having no work
+   * assigned, because both otherwise render as an empty list.
+   */
+  status: string;
+  is_active: boolean;
   roles: string[];
   email_verified: boolean;
 }

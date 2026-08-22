@@ -54,6 +54,21 @@ class UpdateUserRequest extends FormRequest
             'status' => ['required', Rule::in(StoreUserRequest::STATUSES)],
 
             'roles' => ['array'],
+
+            /*
+             * Driver profile. Only meaningful when the user holds the driver role;
+             * the controller ignores these otherwise rather than creating an
+             * orphan profile for a customer.
+             *
+             * carrier_id is the approval switch: a driver with no employer cannot
+             * be assigned work, because AssignBookingRequest checks employment.
+             */
+            'driver.carrier_id' => ['nullable', 'integer', Rule::exists('carriers', 'id')->whereNull('deleted_at')],
+            'driver.license_number' => ['nullable', 'string', 'max:64'],
+            'driver.license_state' => ['nullable', 'string', 'max:64'],
+            'driver.license_expires_at' => ['nullable', 'date'],
+            'driver.cdl_class' => ['nullable', Rule::in(['A', 'B', 'C', 'none'])],
+            'driver.is_available' => ['boolean'],
             'roles.*' => ['string', Rule::exists('roles', 'name'), $this->superAdminGuard()],
         ];
     }

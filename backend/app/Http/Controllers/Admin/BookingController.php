@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AssignBookingRequest;
+use App\Actions\RecordPayment;
+use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Models\Booking;
+use App\Models\Carrier;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -50,9 +54,87 @@ class BookingController extends Controller
             // Feeds the status form. The state machine rejects anything else, so
             // offering the full enum would only manufacture flash errors.
             'allowedTransitions' => $booking->status->allowedNext(),
+
+            /*
+             * Assignment options. Carriers carry their drivers and trucks with them
+             * so the form can be filtered client-side without a round trip — and,
+             * more importantly, so the request-level check that a truck belongs to
+             * the chosen carrier has something to validate against.
+             */
+            'carriers' => Carrier::query()
+                ->with([
+                    'driverProfiles.user:id,name',
+                    'trucks:id,carrier_id,unit_number,trailer_type,is_active',
+                ])
+                ->orderBy('company_name')
+                ->get(),
         ]);
     }
 
+
+
+    /**
+     * Record money received. Manual entry: there is no gateway, so a human is
+     * asserting the money arrived and the row records who.
+     *
+     * A DomainException here means the idempotency key was reused — a
+     * double-submitted form. That is a flash message, not a 500.
+     */
+    public function payment(RecordPaymentRequest $request, Booking $booking, RecordPayment $recordPayment): RedirectResponse
+    {
+        try {
+            $recordPayment->handle($booking, $request->user(), $request->validated());
+        } catch (DomainException $e) {
+            return redirect()
+                ->route('admin.bookings.show', $booking)
+                ->with('error', $e->getMessage());
+        }
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($request->user())
+            ->log("Payment recorded on {$booking->booking_number}");
+
+        return redirect()
+            ->route('admin.bookings.show', $booking)
+            ->with('status', 'Payment recorded.');
+    }
+    /**
+     * Dispatch assignment. Separate from status() because assigning a carrier is
+     * not a state transition — a booking can gain a driver while staying
+     * `confirmed`, and forcing the two through one endpoint would mean either
+     * moving the status as a side effect of assignment or refusing assignment
+     * outside one particular state.
+     *
+     * The timeline event is internal: which of a carrier's drivers is running the
+     * load is operational detail, and a customer watching the tracking screen does
+     * not need a notification every time dispatch reshuffles.
+     */
+    public function assign(AssignBookingRequest $request, Booking $booking): RedirectResponse
+    {
+        $assignment = $request->assignment();
+
+        $booking->fill($assignment)->save();
+
+        $booking->recordEvent('assignment_changed', [
+            'description' => sprintf(
+                'Assigned carrier: %s, driver: %s, truck: %s.',
+                $booking->carrier?->company_name ?? 'none',
+                $booking->driver?->name ?? 'none',
+                $booking->truck?->unit_number ?? 'none',
+            ),
+            'is_customer_visible' => false,
+        ]);
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($request->user())
+            ->log("Assignment updated on {$booking->booking_number}");
+
+        return redirect()
+            ->route('admin.bookings.show', $booking)
+            ->with('status', 'Assignment saved.');
+    }
     /**
      * Every status move goes through Booking::transitionTo(), which writes the
      * status and its timeline event in one transaction. An illegal move is a

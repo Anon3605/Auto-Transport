@@ -7,7 +7,8 @@ client, and a server-rendered admin panel at `/admin` for staff.
 
 **Related:** [`architecture.md`](architecture.md) (system view) ·
 [`database-design.md`](database-design.md) (schema rationale) ·
-[`mobile.md`](mobile.md) (the client)
+[`mobile.md`](mobile.md) (the client) ·
+[`product-spec.md`](product-spec.md) (features + wireframes)
 
 ---
 

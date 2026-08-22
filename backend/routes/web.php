@@ -115,6 +115,15 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             // A support agent may look up a shipment; only dispatch may move it.
             Route::post('{booking}/status', [BookingController::class, 'status'])
                 ->middleware(PermissionMiddleware::using('manage_bookings'))->name('status');
+
+            // Assignment is not a state transition, so it gets its own endpoint —
+            // see BookingController::assign().
+            Route::post('{booking}/assign', [BookingController::class, 'assign'])
+                ->middleware(PermissionMiddleware::using('manage_bookings'))->name('assign');
+
+            // Manual payment entry. Append-only ledger; see RecordPayment.
+            Route::post('{booking}/payments', [BookingController::class, 'payment'])
+                ->middleware(PermissionMiddleware::using('manage_bookings'))->name('payments.store');
         });
 
         // Leads are read-only here: quote_requests is the intake record (§4.1) and

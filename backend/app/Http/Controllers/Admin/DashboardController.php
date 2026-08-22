@@ -31,6 +31,15 @@ class DashboardController extends Controller
             'statusCounts' => $user->can('view_bookings') ? $this->bookingStatusCounts() : [],
             'recentBookings' => $user->can('view_bookings') ? $this->recentBookings() : new Collection,
             'pendingReviews' => $user->can('view_reviews') ? $this->pendingReviews() : new Collection,
+
+            /*
+             * Orders a customer has just placed. These open at pending_payment and
+             * were invisible on this page before: the Active shipments tile starts
+             * at Confirmed, so a brand-new order appeared in no tile at all and the
+             * only way to find one was to filter the bookings list by hand.
+             * A queue nobody is told about is a queue nobody works.
+             */
+            'awaitingConfirmation' => $user->can('view_bookings') ? $this->awaitingConfirmation() : new Collection,
         ]);
     }
 
@@ -54,6 +63,20 @@ class DashboardController extends Controller
             ];
         }
 
+
+        /*
+         * Listed before Active shipments on purpose: an order nobody has confirmed
+         * is the one piece of work on this page with a customer waiting at the far
+         * end of it.
+         */
+        if ($user->can('view_bookings')) {
+            $stats['Awaiting confirmation'] = [
+                'value' => Booking::query()
+                    ->where('status', BookingStatus::PendingPayment)
+                    ->count(),
+                'hint' => 'New orders, not yet confirmed',
+            ];
+        }
         if ($user->can('view_bookings')) {
             $stats['Active shipments'] = [
                 'value' => Booking::query()
@@ -116,6 +139,25 @@ class DashboardController extends Controller
         return $all;
     }
 
+
+    /**
+     * The approval queue: orders a customer has placed that no human has confirmed.
+     *
+     * Oldest first, unlike recentBookings(). This is a work list, not a feed — the
+     * order that has been waiting longest is the one that needs attention, and
+     * newest-first buries it the moment volume picks up.
+     *
+     * @return Collection<int, Booking>
+     */
+    private function awaitingConfirmation(): Collection
+    {
+        return Booking::query()
+            ->with(['user', 'service'])
+            ->where('status', BookingStatus::PendingPayment)
+            ->oldest('created_at')
+            ->limit(8)
+            ->get();
+    }
     /** @return Collection<int, Booking> */
     private function recentBookings(): Collection
     {

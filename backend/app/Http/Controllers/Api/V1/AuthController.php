@@ -43,10 +43,17 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request, RegisterUser $registerUser): JsonResponse
     {
-        $user = $registerUser($request->safe()->only(['name', 'email', 'password', 'phone']));
+        $user = $registerUser(
+            $request->safe()->only(['name', 'email', 'password', 'phone']),
+            // Null for a customer; the licence claims for a driver. Passing them
+            // separately keeps the account fields and the profile fields from
+            // being mixed into one bag the action has to sort out.
+            $request->isDriverApplication() ? $request->driverProfileAttributes() : null,
+        );
 
         // Signed in immediately. Email verification gates what the account may
-        // inherit (§4.10), not whether it may be used.
+        // inherit (§4.10), not whether it may be used -- and for a driver the
+        // `pending` status is what gates the account, not the token.
         return $this->tokenResponse($user, $request, Response::HTTP_CREATED);
     }
 

@@ -29,6 +29,14 @@ class UserResource extends JsonResource
             // always present: an eager-loaded relation is read straight off the
             // collection, and a caller that forgot to load it pays for a lazy
             // read rather than shipping a payload the client cannot parse.
+
+            /*
+             * The app has to be able to tell "no work assigned yet" from "your
+             * account is not approved". Both render as an empty job list without
+             * this, and an empty list reads as a broken app.
+             */
+            'status' => $this->status,
+            'is_active' => $this->status === 'active',
             'roles' => $this->whenLoaded(
                 'roles',
                 fn (): array => $this->roles->pluck('name')->all(),

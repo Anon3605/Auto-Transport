@@ -20,11 +20,24 @@ interface SessionValue {
 }
 
 export interface RegisterInput {
+  /**
+   * Mirrors RegisterRequest::SELF_SERVICE_TYPES. Only these two exist on
+   * purpose — staff accounts have no public registration path, because a
+   * caller-supplied role would be a privilege-escalation hole.
+   */
+  account_type?: 'customer' | 'driver';
+
   name: string;
   email: string;
   password: string;
   password_confirmation: string;
   phone?: string;
+
+  // Driver applications only; the server requires them via required_if.
+  license_number?: string;
+  license_state?: string;
+  license_expires_at?: string;
+  cdl_class?: 'A' | 'B' | 'C' | 'none';
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
